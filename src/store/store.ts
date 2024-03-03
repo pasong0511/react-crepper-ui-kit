@@ -1,63 +1,63 @@
+//stote.ts
+
 import { create } from "zustand";
 
-interface IViewer {
-    id: number;
-    name: string;
+export interface ITodo {
+    id: string;
+    message: string;
 }
 
-type IMainViewActionType =
-    | { type: "ADD_VIEWER"; viewer: IViewer }
-    | { type: "REMOVE_VIEWER"; id: number }
-    | { type: "SET_ACTIVE_VIEWER"; id: number };
-interface IViewerState {
-    viewers: IViewer[];
-    activeViewer?: number;
+type TodoActionType =
+    | { type: "ADD_TODO"; todo: ITodo }
+    | { type: "REMOVE_TODO"; id: string };
 
-    addViewer: (viewer: IViewer) => void;
-    removeViewer: (id: number) => void;
-    setActiveViewer: (id: number) => void;
-
-    dispatch: (action: IMainViewActionType) => void;
+interface ITodoList {
+    todos: ITodo[];
+    dispatch: (action: TodoActionType) => void;
 }
 
-//set 함수는 상태를 업데이트하기 위해 사용되는 함수
-//Zustand 스토어를 생성할 때 create 함수에 전달되는 콜백 함수는 set 함수를 인자로 받음
-//이 set 함수를 사용하여 스토어의 상태를 동기적으로 업데이트할 수 있음
-const useStore = create<IViewerState>((set) => ({
-    viewers: [],
-    addViewer: (viewer) =>
-        //viewer: addViewer() 매개변수로 넘겨주는 값
-        set((state) => ({
-            //prevState에 있는거랑, 새로 들어온 값이랑 합치기
-            viewers: [...state.viewers, viewer],
-        })),
-    removeViewer: (id) =>
-        set((state) => ({ viewers: state.viewers.filter((v) => v.id !== id) })),
-    setActiveViewer: (id) => set(() => ({ activeViewer: id })),
+// ADD_TODO 액션에 대한 처리 로직
+function addTodo(state: ITodoList, action: { todo: ITodo }): ITodoList {
+    return { ...state, todos: [...state.todos, action.todo] };
+}
 
-    //디스패치함수
-    dispatch: (action) => {
-        set((state) => {
-            switch (action.type) {
-                case "ADD_VIEWER":
-                    return {
-                        ...state,
-                        viewers: [...state.viewers, action.viewer],
-                    };
-                case "REMOVE_VIEWER":
-                    return {
-                        ...state,
-                        viewers: state.viewers.filter(
-                            (v) => v.id !== action.id
-                        ),
-                    };
-                case "SET_ACTIVE_VIEWER":
-                    return { ...state, activeViewer: action.id };
-                default:
-                    return state;
-            }
-        });
-    },
-}));
+// REMOVE_TODO 액션에 대한 처리 로직
+function removeTodo(state: ITodoList, action: { id: string }): ITodoList {
+    return {
+        ...state,
+        todos: state.todos.filter((todo) => todo.id !== action.id),
+    };
+}
 
-export default useStore;
+class TodoStore {
+    private useStore = create<ITodoList>((set) => ({
+        todos: [],
+        dispatch: (action) => {
+            set((state) => {
+                switch (action.type) {
+                    case "ADD_TODO":
+                        return addTodo(state, action);
+                    case "REMOVE_TODO":
+                        return removeTodo(state, action);
+                    default:
+                        return state;
+                }
+            });
+        },
+    }));
+
+    get state() {
+        return this.useStore.getState();
+    }
+
+    subscribe(listener: (state: any) => void) {
+        return this.useStore.subscribe(listener);
+    }
+
+    dispatch(action: TodoActionType) {
+        this.useStore.getState().dispatch(action);
+    }
+}
+
+const todoStore = new TodoStore();
+export default todoStore;
