@@ -31,7 +31,7 @@ const centerAspectCrop = (
 export default function Cropper() {
     const [imgSrc, setImgSrc] = useState<string>(""); //파일 Data URL 형식 문자 저장
     const [crop, setCrop] = useState<Crop>(); //height, width, x, y, unut 정보 저장
-    const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+    const [completedCrop, setCompletedCrop] = useState<PixelCrop>(); //이미지 업로드 완료되었을 때 crop 정보(픽셀)
     const [aspect, setAspect] = useState<number | undefined>(16 / 9); //crop 비율
 
     const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
