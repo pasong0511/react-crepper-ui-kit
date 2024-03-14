@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { DependencyList, useEffect, useRef, useState } from "react";
 import ReactCrop, {
     Crop,
     PixelCrop,
@@ -7,6 +7,7 @@ import ReactCrop, {
 } from "react-image-crop";
 
 import "react-image-crop/dist/ReactCrop.css";
+import { canvasPreview } from "./canvas_preview";
 
 const centerAspectCrop = (
     mediaWidth: number,
@@ -33,6 +34,13 @@ export default function Cropper() {
     const [crop, setCrop] = useState<Crop>(); //height, width, x, y, unut 정보 저장
     const [completedCrop, setCompletedCrop] = useState<PixelCrop>(); //이미지 업로드 완료되었을 때 crop 정보(픽셀)
     const [aspect, setAspect] = useState<number | undefined>(16 / 9); //crop 비율
+
+    //아직 왜 있는지 모르겠음
+    const [scale, setScale] = useState(1);
+    const [rotate, setRotate] = useState(0);
+
+    const imgRef = useRef<HTMLImageElement>(null);
+    const previewCanvasRef = useRef<HTMLCanvasElement>(null); //미리보기 ref
 
     const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         console.log(e.target.files);
@@ -68,9 +76,26 @@ export default function Cropper() {
         setCompletedCrop(c);
     };
 
-    useEffect(() => {
-        console.log("2222222", crop);
-    }, [crop]);
+    useDebounceEffect(
+        async () => {
+            if (
+                completedCrop?.width &&
+                completedCrop?.height &&
+                imgRef.current &&
+                previewCanvasRef.current
+            ) {
+                canvasPreview(
+                    imgRef.current,
+                    previewCanvasRef.current,
+                    completedCrop,
+                    scale,
+                    rotate
+                );
+            }
+        },
+        100,
+        [completedCrop, scale, rotate]
+    );
 
     return (
         <div>
@@ -88,6 +113,7 @@ export default function Cropper() {
                     onComplete={onComplete}
                 >
                     <img
+                        ref={imgRef}
                         alt="crop_image"
                         src={imgSrc}
                         style={{ width: 600, height: 700 }}
@@ -95,6 +121,36 @@ export default function Cropper() {
                     />
                 </ReactCrop>
             )}
+            {completedCrop && (
+                <div>
+                    <canvas
+                        ref={previewCanvasRef}
+                        style={{
+                            border: "1px solid black",
+                            objectFit: "contain",
+                            width: completedCrop.width,
+                            height: completedCrop.height,
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
+}
+
+export function useDebounceEffect(
+    fn: () => void,
+    waitTime: number,
+    deps?: DependencyList
+) {
+    useEffect(() => {
+        fn();
+        // const t = setTimeout(() => {
+        //     fn();
+        // }, waitTime);
+
+        // return () => {
+        //     clearTimeout(t);
+        // };
+    }, [fn, ...(deps || [])]);
 }
