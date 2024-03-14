@@ -14,11 +14,13 @@ const centerAspectCrop = (
     mediaHeight: number,
     aspect: number
 ): Crop => {
+    const target = mediaHeight > mediaWidth ? "width" : "height";
+
     return centerCrop(
         makeAspectCrop(
             {
                 unit: "%",
-                width: 90,
+                [target]: 90, //이미지 크기의 10퍼센트
             },
             aspect,
             mediaWidth,
@@ -30,10 +32,12 @@ const centerAspectCrop = (
 };
 
 export default function Cropper() {
+    const RATIO = 1;
+
     const [imgSrc, setImgSrc] = useState<string>(""); //파일 Data URL 형식 문자 저장
     const [crop, setCrop] = useState<Crop>(); //height, width, x, y, unut 정보 저장
     const [completedCrop, setCompletedCrop] = useState<PixelCrop>(); //이미지 업로드 완료되었을 때 crop 정보(픽셀)
-    const [aspect, setAspect] = useState<number | undefined>(16 / 9); //crop 비율
+    const [aspect, setAspect] = useState<number | undefined>(RATIO); //crop 비율
 
     //아직 왜 있는지 모르겠음
     const [scale, setScale] = useState(1);
@@ -63,12 +67,28 @@ export default function Cropper() {
     const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         if (aspect) {
             const { width, height } = e.currentTarget; //현재 이미지 크기
-            setCrop(centerAspectCrop(width, height, aspect));
+            const crop = centerAspectCrop(width, height, aspect);
+            setCrop(crop);
+            // setCompletedCrop(crop as PixelCrop);
         }
     };
 
-    const onChange = (_: Crop, percentCrop: Crop) => {
+    const onChange = (pixelCrop: PixelCrop, percentCrop: Crop) => {
         setCrop(percentCrop);
+        if (
+            completedCrop?.width &&
+            completedCrop?.height &&
+            imgRef.current &&
+            previewCanvasRef.current
+        ) {
+            canvasPreview(
+                imgRef.current,
+                previewCanvasRef.current,
+                pixelCrop,
+                scale,
+                rotate
+            );
+        }
     };
 
     const onComplete = (c: PixelCrop) => {
@@ -76,26 +96,26 @@ export default function Cropper() {
         setCompletedCrop(c);
     };
 
-    useDebounceEffect(
-        async () => {
-            if (
-                completedCrop?.width &&
-                completedCrop?.height &&
-                imgRef.current &&
-                previewCanvasRef.current
-            ) {
-                canvasPreview(
-                    imgRef.current,
-                    previewCanvasRef.current,
-                    completedCrop,
-                    scale,
-                    rotate
-                );
-            }
-        },
-        100,
-        [completedCrop, scale, rotate]
-    );
+    // useDebounceEffect(
+    //     async () => {
+    //         if (
+    //             completedCrop?.width &&
+    //             completedCrop?.height &&
+    //             imgRef.current &&
+    //             previewCanvasRef.current
+    //         ) {
+    //             canvasPreview(
+    //                 imgRef.current,
+    //                 previewCanvasRef.current,
+    //                 completedCrop,
+    //                 scale,
+    //                 rotate
+    //             );
+    //         }
+    //     },
+    //     100,
+    //     [completedCrop, scale, rotate]
+    // );
 
     return (
         <div>
@@ -108,7 +128,6 @@ export default function Cropper() {
                 <ReactCrop
                     crop={crop}
                     aspect={aspect}
-                    minHeight={100}
                     onChange={onChange}
                     onComplete={onComplete}
                 >
@@ -116,7 +135,7 @@ export default function Cropper() {
                         ref={imgRef}
                         alt="crop_image"
                         src={imgSrc}
-                        style={{ width: 600, height: 700 }}
+                        // style={{ width: 600, height: 700 }}
                         onLoad={onImageLoad}
                     />
                 </ReactCrop>
@@ -144,13 +163,12 @@ export function useDebounceEffect(
     deps?: DependencyList
 ) {
     useEffect(() => {
-        fn();
-        // const t = setTimeout(() => {
-        //     fn();
-        // }, waitTime);
+        const t = setTimeout(() => {
+            fn();
+        }, waitTime);
 
-        // return () => {
-        //     clearTimeout(t);
-        // };
+        return () => {
+            clearTimeout(t);
+        };
     }, [fn, ...(deps || [])]);
 }
